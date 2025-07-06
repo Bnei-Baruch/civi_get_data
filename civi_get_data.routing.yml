@@ -1,0 +1,15 @@
+# event registration
+civi_get_data.options:
+  path: '/civi-get-data/options'
+  defaults:
+    _controller: '\Drupal\civi_get_data\Controller\CiviGetDataController::optionsPage'
+  requirements:
+    _permission: 'access content'
+
+# meal checkout
+civi_get_data.meal_checkout:
+  path: '/civi-get-data/meal_checkout'
+  defaults:
+    _controller: '\Drupal\civi_get_data\Controller\CiviGetDataController::mealCheckout'
+  requirements:
+    _permission: 'access content'

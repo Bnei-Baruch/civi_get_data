@@ -1,0 +1,4 @@
+name = CiviCRM Get Data
+description = Fetch data without requirement to have access to Civi API
+core = 7.x
+package = Custom

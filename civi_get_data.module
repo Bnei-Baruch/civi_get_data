@@ -1,0 +1,115 @@
+<?php
+
+use Civi\Api4\Generic\Result;
+
+/**
+ * Implements hook_menu().
+ */
+function civi_get_data_menu() {
+  $items = array();
+
+  $items['civi-get-data/options'] = array(
+    'title' => 'Civi Get Data Options',
+    'page callback' => 'civi_get_data_options_page',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Page callback for /civi-get-data/options.
+ */
+function civi_get_data_options_page() {
+  // Bootstrap CiviCRM manually if needed
+  if (!defined('CIVICRM_DSN')) {
+    $civicrm_root = DRUPAL_ROOT . '/sites/all/modules/civicrm';
+    require_once $civicrm_root . '/civicrm.config.php';
+    require_once $civicrm_root . '/CRM/Core/Config.php';
+    CRM_Core_Config::singleton();
+  }
+
+  // Get logged-in contact ID
+  $contact_id = CRM_Core_Session::singleton()->getLoggedInContactID();
+  if (!$contact_id) {
+    drupal_json_output(['status' => 'error', 'message' => 'User not logged in']);
+    drupal_exit();
+  }
+
+  // Read event_id from a GET param:
+  $event_id = isset($_GET['event_id']) ? $_GET['event_id'] : NULL;
+  if (!$event_id) {
+    drupal_json_output(['status' => 'error', 'message' => 'Missing event_id', 'event_id' => $event_id]);
+    drupal_exit();
+  }
+
+  $sql = "
+    SELECT
+      CASE WHEN registration_option1_title_1553 != '' THEN 1 ELSE 0 END AS option1,
+      CASE WHEN registration_option2_title_1554 != '' THEN 1 ELSE 0 END AS option2,
+      CASE WHEN registration_option3_title_1555 != '' THEN 1 ELSE 0 END AS option3,
+      CASE WHEN registration_option4_title_1556 != '' THEN 1 ELSE 0 END AS option4
+    FROM civicrm_activity a
+    JOIN civicrm_activity_contact ac ON a.id = ac.activity_id AND ac.record_type_id = 3 AND ac.contact_id = :contact_id
+    JOIN civicrm_value_registration__248 e ON a.id = e.entity_id AND e.event_id_1448 = :event_id
+    JOIN civicrm_contribution c ON e.id_for_payment_1460 = c.source AND c.contribution_status_id = 1
+    WHERE a.activity_type_id = 182
+  ";
+
+  $params = [
+    ':contact_id' => $contact_id,
+    ':event_id' => $event_id,
+  ];
+
+  try {
+    $results = db_query($sql, $params)->fetchAll(PDO::FETCH_ASSOC);
+    $options = [0, 0, 0, 0];
+    foreach ($results as $row) {
+	$options[0] = $options[0] === 0 ? (!empty($row['option1']) ? 1 : 0) : $options[0];
+	$options[1] = $options[1] === 0 ? (!empty($row['option2']) ? 1 : 0) : $options[1];
+	$options[2] = $options[2] === 0 ? (!empty($row['option3']) ? 1 : 0) : $options[2];
+	$options[3] = $options[3] === 0 ? (!empty($row['option4']) ? 1 : 0) : $options[3];
+    }
+  }
+  catch (Exception $e) {
+    watchdog_exception('civi_get_data', $e);
+    drupal_json_output([
+      'status' => 'error',
+      'message' => 'Database error',
+      'details' => $e->getMessage(),
+    ]);
+    drupal_exit();
+  }
+
+	$sql = "
+    SELECT a.id, 
+           e.*
+    FROM civicrm_activity a
+    LEFT JOIN civicrm_value_registration__248 e ON a.id = e.entity_id
+		WHERE a.id = :event_id
+			AND DATE(STR_TO_DATE(e.event_date_1450, '%Y-%m-%d %H:%i:%s')) > NOW() - INTERVAL 10 DAY
+	";
+
+	try {
+		$activities = db_query($sql, [':event_id' => $event_id])->fetchAll(PDO::FETCH_ASSOC);
+  }
+  catch (Exception $e) {
+    watchdog_exception('civi_get_data', $e);
+    drupal_json_output([
+      'status' => 'error',
+      'message' => $e->getMessage(),
+    ]);
+    drupal_exit();
+	}
+
+  drupal_json_output([
+    'status' => 'success',
+	  'event_id' => $event_id,
+	  'contact_id' => $contact_id,
+    'options' => $options,
+    'activities' => $activities,
+  ]);
+  drupal_exit();
+}
+

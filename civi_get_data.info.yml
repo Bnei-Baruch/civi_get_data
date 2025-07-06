@@ -1,0 +1,6 @@
+name: 'CiviCRM Get Data'
+type: module
+description: 'Fetch data without requirement to have access to Civi API'
+package: Custom
+core_version_requirement: ^10
+
