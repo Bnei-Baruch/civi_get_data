@@ -86,6 +86,78 @@ class CiviGetDataController extends ControllerBase {
 			'base_url' => $request->getSchemeAndHttpHost(),
 		]);
 	}
+	
+	public function mealRegistration(Request $request) {
+		$init = $this->initCiviCRM();
+		$obj = json_decode($init->getContent());
+		if ($obj->status != 'success') {
+			return $init;
+		}
+
+	  // Get logged-in contact ID
+		$contact_id = \CRM_Core_Session::singleton()->getLoggedInContactID();
+ 		if (!$contact_id) {
+		  return new JsonResponse([
+				'status' => 'error',
+				'message' => 'User not logged in'
+			]);
+	  }
+	  // Read meal_id from a GET param:
+	  $meal_id = $request->query->get('meal_id');
+	  if (!$meal_id || $meal_id === 'null') {
+		  return new JsonResponse([
+			  'status' => 'success',
+			  'message' => 'Missing meal_id',
+		  ]);
+	  }
+		$civiDb = Database::getConnection('default', 'civicrm');
+
+		// get activity data
+		$sql = "
+		SELECT
+			ca.id AS meal_id
+			, ca.subject as subject
+			, r.adult_price1_1401 as adult_price
+			, r.adult_vegetarian_price1_1400 as adult_vegetarian_price
+			, r.without_food_price1_1399 as without_food_price
+			, r.child_price1_1398 as child_price
+			, r.take_away_price_1431 as take_away_price
+			, r.take_away_vegetarian_price_1432 as take_away_vegetarian_price
+			, r.take_away_closing_order_1798 as take_away_closing_order
+			, r.percent_1395 as percent
+			, r.early_registration_closing_date_1393 as early_registration_closing_date
+			, r.sitting_with_families_1422 as sitting_with_families
+			, e.display_name_event_1466    display_name_he
+			, e.display_name_event_en_1581 display_name_en
+			, e.display_name_event_ru_1582 display_name_ru
+			, e.display_name_event_es_1583 display_name_es
+			, e.content_1452 content_he
+			, e.content_en_1578 content_en
+			, e.content_ru_1579 content_ru
+			, e.content_es_1580 content_es
+		FROM civicrm_activity ca
+		JOIN civicrm_value_registration__243 r ON r.entity_id = :meal_id
+		JOIN civicrm_value_registration__248 e ON e.entity_id = :meal_id
+		WHERE ca.id = :meal_id 
+	";
+	  try {
+	    $results = $civiDb->query($sql, [
+					':meal_id' => $meal_id,
+				])->fetchAssoc('id');
+	  }
+	  catch (Exception $e) {
+	    \Drupal::logger('civi_get_data')->error($e->getMessage());
+		  return new JsonResponse([
+	      'status' => 'error',
+	      'message' => 'Database error',
+	      'details' => $e->getMessage(),
+	    ]);
+	  }
+		return new JsonResponse([
+			'status' => 'success',
+			'meal_data' => $results,
+		]);
+	}
 
 	public function optionsPage(Request $request) {
 		$init = $this->initCiviCRM();

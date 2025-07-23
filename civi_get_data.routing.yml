@@ -13,3 +13,11 @@ civi_get_data.meal_checkout:
     _controller: '\Drupal\civi_get_data\Controller\CiviGetDataController::mealCheckout'
   requirements:
     _permission: 'access content'
+
+# meal registration
+civi_get_data.meal_registration:
+  path: '/civi-get-data/meal_registration'
+  defaults:
+    _controller: '\Drupal\civi_get_data\Controller\CiviGetDataController::mealRegistration'
+  requirements:
+    _permission: 'access content'
