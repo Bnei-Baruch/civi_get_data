@@ -25,6 +25,79 @@ class CiviGetDataController extends ControllerBase {
     );
 	}
 
+	public function mealCalendarStatus(Request $request) {
+		$init = $this->initCiviCRM();
+		$obj = json_decode($init->getContent());
+		if ($obj->status != 'success') {
+			return $init;
+		}
+
+	  // Get logged-in contact ID
+		$contact_id = \CRM_Core_Session::singleton()->getLoggedInContactID();
+ 		if (!$contact_id) {
+		  return new JsonResponse([
+				'status' => 'error',
+				'message' => 'User not logged in'
+			]);
+	  }
+
+		$civiDb = Database::getConnection('default', 'civicrm');
+
+		// get activities:
+		$sql = "
+SELECT cf.id__1439 as meal_id, 1 as card, a.subject
+FROM civicrm_activity_contact ac
+INNER JOIN civicrm_activity a ON a.id = ac.activity_id
+	AND ac.record_type_id = '3'
+	AND a.activity_type_id = '178'
+	AND a.status_id = '17'
+	AND DATE(a.activity_date_time) = CURDATE()
+INNER JOIN civicrm_value_registration__243 cf ON cf.entity_id = a.id
+WHERE ac.contact_id = :contact_id
+
+UNION
+
+(
+SELECT DISTINCT cf.id__1439 as meal_id, 0 as card, a.subject
+FROM civicrm_activity_contact ac
+INNER JOIN civicrm_activity a ON a.id = ac.activity_id
+	AND ac.record_type_id = '3'
+	AND a.activity_type_id = '178'
+	AND a.status_id = '2'
+    AND a.activity_date_time >= NOW() - INTERVAL 60 DAY
+INNER JOIN civicrm_value_registration__243 cf ON cf.entity_id = a.id
+INNER JOIN civicrm_contribution cc ON cc.id = cf.id_for_the_payment_1375 AND cc.contribution_status_id = 1
+WHERE ac.contact_id = :contact_id
+)
+	";
+	  try {
+	    $results = $civiDb->query($sql, [ ':contact_id' => $contact_id, ])->fetchAll();
+	  } catch (Exception $e) {
+	    \Drupal::logger('civi_get_data')->error($e->getMessage());
+		  return new JsonResponse([
+	      'status' => 'error',
+	      'message' => 'Database error',
+	      'details' => $e->getMessage(),
+	    ]);
+	  }
+		$in_card = array();
+		$registered = array();
+	    foreach ($results as $row) {
+		    if ($row->card == "1") {
+			    $in_card[] = $row->meal_id;
+		    } else {
+			    $registered[] = $row->meal_id;
+		    }
+	    }
+		return new JsonResponse([
+			'status' => 'success',
+			'in_card' => $in_card,
+			'registered' => $registered,
+			'all' => $results,
+			// 'activities' => join(',', array_keys($results)),
+		]);
+	}
+
 	public function mealCheckout(Request $request) {
 		$init = $this->initCiviCRM();
 		$obj = json_decode($init->getContent());
@@ -196,7 +269,9 @@ class CiviGetDataController extends ControllerBase {
 	      CASE WHEN registration_option1_title_1553 != '' THEN 1 ELSE 0 END AS option1,
 	      CASE WHEN registration_option2_title_1554 != '' THEN 1 ELSE 0 END AS option2,
 	      CASE WHEN registration_option3_title_1555 != '' THEN 1 ELSE 0 END AS option3,
-	      CASE WHEN registration_option4_title_1556 != '' THEN 1 ELSE 0 END AS option4
+	      CASE WHEN registration_option4_title_1556 != '' THEN 1 ELSE 0 END AS option4,
+	      CASE WHEN registration_option5_title_1800 != '' THEN 1 ELSE 0 END AS option5,
+	      CASE WHEN registration_option6_title_1804 != '' THEN 1 ELSE 0 END AS option6
 	    FROM civicrm_activity a
 	    JOIN civicrm_activity_contact ac ON a.id = ac.activity_id AND ac.record_type_id = 3 AND ac.contact_id = :contact_id
 	    JOIN civicrm_value_registration__248 e ON a.id = e.entity_id AND e.event_id_1448 = :event_id
@@ -212,12 +287,14 @@ class CiviGetDataController extends ControllerBase {
 					':type' => $type,
 				])->fetchAllAssoc('id');
 
-			$options = [0, 0, 0, 0];
+	    $options = [0, 0, 0, 0, 0, 0];
 	    foreach ($results as $row) {
 				$options[0] = $options[0] === 0 ? (!empty($row->option1) ? 1 : 0) : $options[0];
 				$options[1] = $options[1] === 0 ? (!empty($row->option2) ? 1 : 0) : $options[1];
 				$options[2] = $options[2] === 0 ? (!empty($row->option3) ? 1 : 0) : $options[2];
 				$options[3] = $options[3] === 0 ? (!empty($row->option4) ? 1 : 0) : $options[3];
+				$options[4] = $options[4] === 0 ? (!empty($row->option5) ? 1 : 0) : $options[4];
+				$options[5] = $options[5] === 0 ? (!empty($row->option6) ? 1 : 0) : $options[5];
 	    }
 	  }
 	  catch (Exception $e) {
@@ -235,7 +312,6 @@ class CiviGetDataController extends ControllerBase {
 	    FROM civicrm_activity a
 	    LEFT JOIN civicrm_value_registration__248 e ON a.id = e.entity_id
    	    WHERE a.id = :event_id
-			AND a.status_id = '2'
 	    AND DATE(STR_TO_DATE(e.event_date_1450, '%Y-%m-%d %H:%i:%s')) > NOW() - INTERVAL 10 DAY
 	";
 

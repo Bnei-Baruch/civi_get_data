@@ -6,6 +6,14 @@ civi_get_data.options:
   requirements:
     _permission: 'access content'
 
+# meal calendar support
+civi_get_data.meal_calendar_status:
+  path: '/civi-get-data/meal_calendar_status'
+  defaults:
+    _controller: '\Drupal\civi_get_data\Controller\CiviGetDataController::mealCalendarStatus'
+  requirements:
+    _permission: 'access content'
+
 # meal checkout
 civi_get_data.meal_checkout:
   path: '/civi-get-data/meal_checkout'
