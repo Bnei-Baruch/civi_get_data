@@ -29,12 +29,24 @@ class CiviGetDataController extends ControllerBase {
 		$init = $this->initCiviCRM();
 		$obj = json_decode($init->getContent());
 		if ($obj->status != 'success') {
+	    \Drupal::logger('civi_get_data')->error($e->getMessage());
+		  return new JsonResponse([
+	      'status' => 'error',
+	      'message' => 'getContent error',
+	      'details' => '',
+	    ]);
 			return $init;
 		}
 
 	  // Get logged-in contact ID
 		$contact_id = \CRM_Core_Session::singleton()->getLoggedInContactID();
  		if (!$contact_id) {
+	    \Drupal::logger('civi_get_data')->error($e->getMessage());
+		  return new JsonResponse([
+	      'status' => 'error',
+	      'message' => 'getLoggedInContactID error',
+	      'details' => '',
+	    ]);
 		  return new JsonResponse([
 				'status' => 'error',
 				'message' => 'User not logged in'
@@ -45,7 +57,7 @@ class CiviGetDataController extends ControllerBase {
 
 		// get activities:
 		$sql = "
-SELECT cf.id__1439 as meal_id, 1 as card, a.subject
+SELECT cf.id__1439 as meal_id, 1 as card, a.subject, a.activity_date_time, 1
 FROM civicrm_activity_contact ac
 INNER JOIN civicrm_activity a ON a.id = ac.activity_id
 	AND ac.record_type_id = '3'
@@ -58,7 +70,7 @@ WHERE ac.contact_id = :contact_id
 UNION
 
 (
-SELECT DISTINCT cf.id__1439 as meal_id, 0 as card, a.subject
+SELECT DISTINCT cf.id__1439 as meal_id, 0 as card, a.subject, a.activity_date_time, 2
 FROM civicrm_activity_contact ac
 INNER JOIN civicrm_activity a ON a.id = ac.activity_id
 	AND ac.record_type_id = '3'
@@ -102,12 +114,24 @@ WHERE ac.contact_id = :contact_id
 		$init = $this->initCiviCRM();
 		$obj = json_decode($init->getContent());
 		if ($obj->status != 'success') {
+	    \Drupal::logger('civi_get_data')->error($e->getMessage());
+		  return new JsonResponse([
+	      'status' => 'error',
+	      'message' => 'mealCheckout getContent error',
+	      'details' => '',
+	    ]);
 			return $init;
 		}
 
 	  // Get logged-in contact ID
 		$contact_id = \CRM_Core_Session::singleton()->getLoggedInContactID();
  		if (!$contact_id) {
+	    \Drupal::logger('civi_get_data')->error($e->getMessage());
+		  return new JsonResponse([
+	      'status' => 'error',
+	      'message' => 'mealCheckout getLoggedInContactID error',
+	      'details' => '',
+	    ]);
 		  return new JsonResponse([
 				'status' => 'error',
 				'message' => 'User not logged in'
@@ -156,7 +180,7 @@ WHERE ac.contact_id = :contact_id
 			'message' => $results,
 			'total_amount' => $total_sum,
 			'activities' => join(',', array_keys($results)),
-			'base_url' => $request->getSchemeAndHttpHost(),
+			'base_url' => $request->getSchemeAndHttpHost() . '/en',
 		]);
 	}
 	
@@ -337,6 +361,34 @@ WHERE ac.contact_id = :contact_id
 	  ]);
 	}
 	
+	private function initCiviCRMRequire($filename) {
+		try {
+			// Find CiviCRM installation
+			$civicrm_root = DRUPAL_ROOT . '/sites/default/civicrm/';
+			
+			// Check if the config file exists
+			if (file_exists($civicrm_root . $filename)) {
+				return $civicrm_root . $filename;
+			}
+			// Try alternative locations
+			$possible_paths = [
+				DRUPAL_ROOT . '/web/sites/default/civicrm/',
+				DRUPAL_ROOT . '/../vendor/civicrm/civicrm-core/',
+				DRUPAL_ROOT . '/libraries/civicrm/',
+				'/var/www/civicrm/'  // Common server location
+			];
+			
+			foreach ($possible_paths as $path) {
+				if (file_exists($path . $filename)) {
+					return $path . $filename;
+				}
+			}
+		} catch (Exception $e) {
+			return NULL;
+		}
+		return NULL;
+	}
+
 	private function initCiviCRM() {
 		// Check if CiviCRM module exists
 		if (!\Drupal::moduleHandler()->moduleExists('civicrm')) {
@@ -345,48 +397,27 @@ WHERE ac.contact_id = :contact_id
 				'message' => 'CiviCRM module not enabled'
 			]);
 		}
-  
-		// Try to bootstrap CiviCRM manually
-		try {
-			// Find CiviCRM installation
-			$civicrm_root = DRUPAL_ROOT . '/sites/default/civicrm';
-			
-			// Check if the config file exists
-			if (!file_exists($civicrm_root . '/civicrm.config.php')) {
-				// Try alternative locations
-				$possible_paths = [
-					DRUPAL_ROOT . '/../vendor/civicrm/civicrm-core',
-					DRUPAL_ROOT . '/libraries/civicrm',
-					'/var/www/civicrm'  // Common server location
-				];
-				
-				$civicrm_root = null;
-				foreach ($possible_paths as $path) {
-					if (file_exists($path . '/civicrm.config.php')) {
-						$civicrm_root = $path;
-						break;
-					}
-				}
-				
-				if (!$civicrm_root) {
-					return new JsonResponse([
-						'status' => 'error',
-						'message' => 'CiviCRM configuration file not found'
-					]);
-				}
-			}
-			
-			// Bootstrap CiviCRM
-			require_once $civicrm_root . '/civicrm.config.php';
-			require_once $civicrm_root . '/CRM/Core/Config.php';
-			\CRM_Core_Config::singleton();
-			
-		} catch (Exception $e) {
+		$res = $this->initCiviCRMRequire('civicrm.config.php');
+		if ($res === null) {
 			return new JsonResponse([
 				'status' => 'error',
-				'message' => 'Failed to initialize CiviCRM: ' . $e->getMessage()
+				'message' => 'civicrm.config.php' . ' not found'
 			]);
 		}
+		if (is_string($res)) {
+			require_once $res;
+		}
+  		$res = $this->initCiviCRMRequire('CRM/Core/Config.php');
+		if ($res === null) {
+			return new JsonResponse([
+				'status' => 'error',
+				'message' => 'CRM/Core/Config.php' . ' not found'
+			]);
+		}
+		if (is_string($res)) {
+			require_once $res;
+		}
+		\CRM_Core_Config::singleton();
 
 		return new JsonResponse([
 			'status' => 'success'
