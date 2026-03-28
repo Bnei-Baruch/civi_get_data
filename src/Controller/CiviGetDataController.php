@@ -124,6 +124,8 @@ WHERE ac.contact_id = :contact_id
 		}
 
 	  // Get logged-in contact ID
+		$contact_id = $request->query->get('cid');
+ 		if (!$contact_id) {
 		$contact_id = \CRM_Core_Session::singleton()->getLoggedInContactID();
  		if (!$contact_id) {
 	    \Drupal::logger('civi_get_data')->error($e->getMessage());
@@ -136,6 +138,7 @@ WHERE ac.contact_id = :contact_id
 				'status' => 'error',
 				'message' => 'User not logged in'
 			]);
+	  }
 	  }
 
 		$civiDb = Database::getConnection('default', 'civicrm');
@@ -264,6 +267,8 @@ WHERE ac.contact_id = :contact_id
 		}
 
 	  // Get logged-in contact ID
+	  $contact_id = $request->query->get('cid');
+ 	if (!$contact_id) {
 		$contact_id = \CRM_Core_Session::singleton()->getLoggedInContactID();
  		if (!$contact_id) {
 		  return new JsonResponse([
@@ -271,6 +276,7 @@ WHERE ac.contact_id = :contact_id
 				'message' => 'User not logged in',
 				'base_url' => $request->getSchemeAndHttpHost(),
 			]);
+	  }
 	  }
 
 	  // Read event_id from a GET param:
@@ -341,6 +347,11 @@ WHERE ac.contact_id = :contact_id
 
 		try {
 			$activities = $civiDb->query($sql, [':event_id' => $event_id])->fetchAllAssoc('id');
+			// If no results, return array with one empty object so JS receives [{}]
+			if (empty($activities)) {
+			    $empty = new \stdClass();
+			    $activities = [$empty];
+			}
 	  }
 	  catch (Exception $e) {
 	    \Drupal::logger('civi_get_data')->error($e->getMessage());
