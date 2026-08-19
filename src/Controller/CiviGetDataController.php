@@ -224,7 +224,6 @@ WHERE ac.contact_id = :contact_id
 			, r.take_away_price_1431 as take_away_price
 			, r.take_away_vegetarian_price_1432 as take_away_vegetarian_price
 			, r.take_away_closing_order_1798 as take_away_closing_order
-			, r.percent_1395 as percent
 			, r.early_registration_closing_date_1393 as early_registration_closing_date
 			, r.sitting_with_families_1422 as sitting_with_families
 			, e.display_name_event_1466    display_name_he
