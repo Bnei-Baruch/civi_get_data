@@ -13,6 +13,10 @@ use Exception;
 
 class CiviGetDataController extends ControllerBase {
 
+	// Activity type of an event registration (bb-pelecard-sdk's
+	// ActivityUpdater::ACTIVITY_TYPE_EVENT).
+	const ACTIVITY_TYPE_EVENT = 182;
+
 	protected $database;
 
   public function __construct(Connection $database) {
@@ -291,7 +295,7 @@ WHERE ac.contact_id = :contact_id
 
 		$civiDb = Database::getConnection('default', 'civicrm');
 		
-	  $type = $request->query->get('type') ?? 182;
+	  $type = $request->query->get('type') ?? self::ACTIVITY_TYPE_EVENT;
 	  $sql = "
 	    SELECT
 	      a.id,
@@ -305,7 +309,7 @@ WHERE ac.contact_id = :contact_id
 	    JOIN civicrm_activity_contact ac ON a.id = ac.activity_id AND ac.record_type_id = 3 AND ac.contact_id = :contact_id
 	    JOIN civicrm_value_registration__248 e ON a.id = e.entity_id AND e.event_id_1448 = :event_id
 	  ";
-	  if ($type == 182) {
+	  if ($type == self::ACTIVITY_TYPE_EVENT) {
 		  $sql .= " JOIN civicrm_contribution c ON e.id_for_payment_1460 = c.id AND c.contribution_status_id = 1 ";
 	  }
 	  $sql .= " WHERE a.activity_type_id = :type ";

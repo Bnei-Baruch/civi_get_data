@@ -2,6 +2,10 @@
 
 use Civi\Api4\Generic\Result;
 
+// Activity type of an event registration (bb-pelecard-sdk's
+// ActivityUpdater::ACTIVITY_TYPE_EVENT).
+define('CIVI_GET_DATA_ACTIVITY_TYPE_EVENT', 182);
+
 /**
  * Implements hook_menu().
  */
@@ -54,12 +58,13 @@ function civi_get_data_options_page() {
     JOIN civicrm_activity_contact ac ON a.id = ac.activity_id AND ac.record_type_id = 3 AND ac.contact_id = :contact_id
     JOIN civicrm_value_registration__248 e ON a.id = e.entity_id AND e.event_id_1448 = :event_id
     JOIN civicrm_contribution c ON e.id_for_payment_1460 = c.source AND c.contribution_status_id = 1
-    WHERE a.activity_type_id = 182
+    WHERE a.activity_type_id = :type
   ";
 
   $params = [
     ':contact_id' => $contact_id,
     ':event_id' => $event_id,
+    ':type' => CIVI_GET_DATA_ACTIVITY_TYPE_EVENT,
   ];
 
   try {
