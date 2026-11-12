@@ -269,18 +269,14 @@ WHERE ac.contact_id = :contact_id
 			return $init;
 		}
 
-	  // Get logged-in contact ID
+	  // Contact: cid, else the logged-in one. A visitor who is not logged in
+	  // still gets the event's data; only the contact's own registration
+	  // options are left out (all zeros, contact_id null).
 	  $contact_id = $request->query->get('cid');
- 	if (!$contact_id) {
-		$contact_id = \CRM_Core_Session::singleton()->getLoggedInContactID();
- 		if (!$contact_id) {
-		  return new JsonResponse([
-				'status' => 'error',
-				'message' => 'User not logged in',
-				'base_url' => $request->getSchemeAndHttpHost(),
-			]);
+	  if (!$contact_id) {
+		  $contact_id = \CRM_Core_Session::singleton()->getLoggedInContactID();
 	  }
-	  }
+	  $contact_id = $contact_id ?: NULL;
 
 	  // Read event_id from a GET param:
 	  $event_id = $request->query->get('event_id');
@@ -296,6 +292,8 @@ WHERE ac.contact_id = :contact_id
 		$civiDb = Database::getConnection('default', 'civicrm');
 		
 	  $type = $request->query->get('type') ?? self::ACTIVITY_TYPE_EVENT;
+	  $options = [0, 0, 0, 0, 0, 0];
+	  if ($contact_id) {
 	  $sql = "
 	    SELECT
 	      a.id,
@@ -320,7 +318,6 @@ WHERE ac.contact_id = :contact_id
 					':type' => $type,
 				])->fetchAllAssoc('id');
 
-	    $options = [0, 0, 0, 0, 0, 0];
 	    foreach ($results as $row) {
 				$options[0] = $options[0] === 0 ? (!empty($row->option1) ? 1 : 0) : $options[0];
 				$options[1] = $options[1] === 0 ? (!empty($row->option2) ? 1 : 0) : $options[1];
@@ -338,6 +335,7 @@ WHERE ac.contact_id = :contact_id
 	      'details' => $e->getMessage(),
 				'base_url' => $request->getSchemeAndHttpHost(),
 	    ]);
+	  }
 	  }
 
 		$sql = "
