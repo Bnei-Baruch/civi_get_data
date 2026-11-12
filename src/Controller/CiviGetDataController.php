@@ -33,28 +33,23 @@ class CiviGetDataController extends ControllerBase {
 		$init = $this->initCiviCRM();
 		$obj = json_decode($init->getContent());
 		if ($obj->status != 'success') {
-	    \Drupal::logger('civi_get_data')->error($e->getMessage());
+	    \Drupal::logger('civi_get_data')->error('CiviCRM init failed: @msg', ['@msg' => $obj->message ?? '']);
 		  return new JsonResponse([
 	      'status' => 'error',
 	      'message' => 'getContent error',
 	      'details' => '',
 	    ]);
-			return $init;
 		}
 
 	  // Get logged-in contact ID
 		$contact_id = \CRM_Core_Session::singleton()->getLoggedInContactID();
  		if (!$contact_id) {
-	    \Drupal::logger('civi_get_data')->error($e->getMessage());
+		  // Not logged in is normal for a visitor; answer with JSON, not a 500.
 		  return new JsonResponse([
 	      'status' => 'error',
 	      'message' => 'getLoggedInContactID error',
 	      'details' => '',
 	    ]);
-		  return new JsonResponse([
-				'status' => 'error',
-				'message' => 'User not logged in'
-			]);
 	  }
 
 		$civiDb = Database::getConnection('default', 'civicrm');
@@ -118,13 +113,12 @@ WHERE ac.contact_id = :contact_id
 		$init = $this->initCiviCRM();
 		$obj = json_decode($init->getContent());
 		if ($obj->status != 'success') {
-	    \Drupal::logger('civi_get_data')->error($e->getMessage());
+	    \Drupal::logger('civi_get_data')->error('CiviCRM init failed: @msg', ['@msg' => $obj->message ?? '']);
 		  return new JsonResponse([
 	      'status' => 'error',
 	      'message' => 'mealCheckout getContent error',
 	      'details' => '',
 	    ]);
-			return $init;
 		}
 
 	  // Get logged-in contact ID
@@ -132,16 +126,12 @@ WHERE ac.contact_id = :contact_id
  		if (!$contact_id) {
 		$contact_id = \CRM_Core_Session::singleton()->getLoggedInContactID();
  		if (!$contact_id) {
-	    \Drupal::logger('civi_get_data')->error($e->getMessage());
+		  // Not logged in is normal for a visitor; answer with JSON, not a 500.
 		  return new JsonResponse([
 	      'status' => 'error',
 	      'message' => 'mealCheckout getLoggedInContactID error',
 	      'details' => '',
 	    ]);
-		  return new JsonResponse([
-				'status' => 'error',
-				'message' => 'User not logged in'
-			]);
 	  }
 	  }
 
