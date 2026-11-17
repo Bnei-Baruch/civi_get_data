@@ -217,6 +217,8 @@ WHERE ac.contact_id = :contact_id
 			, r.child_price1_1398 as child_price
 			, r.take_away_price_1431 as take_away_price
 			, r.take_away_vegetarian_price_1432 as take_away_vegetarian_price
+			, r.take_away_duty_price_2061 as take_away_duty_price
+			, r.take_away_vegetarian_duty_price_2062 as take_away_vegetarian_duty_price
 			, r.take_away_closing_order_1798 as take_away_closing_order
 			, r.early_registration_closing_date_1393 as early_registration_closing_date
 			, r.sitting_with_families_1422 as sitting_with_families
